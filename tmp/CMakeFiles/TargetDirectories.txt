@@ -1,0 +1,3 @@
+/home/Dimon/Stepic/httpserver/server_final/tmp/CMakeFiles/rebuild_cache.dir
+/home/Dimon/Stepic/httpserver/server_final/tmp/CMakeFiles/edit_cache.dir
+/home/Dimon/Stepic/httpserver/server_final/tmp/CMakeFiles/../release/hserver.dir
