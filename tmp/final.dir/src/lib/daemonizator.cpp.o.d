@@ -1,7 +1,6 @@
-CMakeFiles/../release/hserver.dir/src/lib/daemonizator.cpp.o: \
- /home/Dimon/Stepic/httpserver/server_final/src/lib/daemonizator.cpp \
- /usr/include/stdc-predef.h /usr/include/syslog.h \
- /usr/include/sys/syslog.h /usr/include/features.h \
+CMakeFiles/../final.dir/src/lib/daemonizator.cpp.o: \
+ /home/box/final/src/lib/daemonizator.cpp /usr/include/stdc-predef.h \
+ /usr/include/syslog.h /usr/include/sys/syslog.h /usr/include/features.h \
  /usr/include/sys/cdefs.h /usr/include/bits/wordsize.h \
  /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
  /usr/include/gnu/stubs-64.h \

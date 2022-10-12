@@ -1,6 +1,6 @@
-CMakeFiles/../release/hserver.dir/src/lib/worker.cpp.o: \
- /home/Dimon/Stepic/httpserver/server_final/src/lib/worker.cpp \
- /usr/include/stdc-predef.h /usr/include/c++/11/iostream \
+CMakeFiles/../final.dir/src/lib/worker.cpp.o: \
+ /home/box/final/src/lib/worker.cpp /usr/include/stdc-predef.h \
+ /usr/include/c++/11/iostream \
  /usr/include/c++/11/x86_64-redhat-linux/bits/c++config.h \
  /usr/include/bits/wordsize.h \
  /usr/include/c++/11/x86_64-redhat-linux/bits/os_defines.h \
@@ -143,7 +143,5 @@ CMakeFiles/../release/hserver.dir/src/lib/worker.cpp.o: \
  /usr/include/asm/sockios.h /usr/include/asm-generic/sockios.h \
  /usr/include/bits/types/struct_osockaddr.h /usr/include/syslog.h \
  /usr/include/sys/syslog.h /usr/include/bits/syslog-path.h \
- /home/Dimon/Stepic/httpserver/server_final/src/lib/worker.h \
- /home/Dimon/Stepic/httpserver/server_final/src/lib/fdtransceiver.h \
- /home/Dimon/Stepic/httpserver/server_final/src/lib/unblock.h \
- /home/Dimon/Stepic/httpserver/server_final/src/lib/webproc.h
+ /home/box/final/src/lib/worker.h /home/box/final/src/lib/fdtransceiver.h \
+ /home/box/final/src/lib/unblock.h /home/box/final/src/lib/webproc.h

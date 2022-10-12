@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/Dimon/Stepic/httpserver/server_final
+CMAKE_SOURCE_DIR = /home/box/final
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/Dimon/Stepic/httpserver/server_final/tmp
+CMAKE_BINARY_DIR = /home/box/final/tmp
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/Dimon/Stepic/httpserver/server_final/tmp/CMakeFiles /home/Dimon/Stepic/httpserver/server_final/tmp//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/box/final/tmp/CMakeFiles /home/box/final/tmp//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/Dimon/Stepic/httpserver/server_final/tmp/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/box/final/tmp/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -117,24 +117,24 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named ../release/hserver
+# Target rules for targets named ../final
 
 # Build rule for target.
-../release/hserver: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ../release/hserver
-.PHONY : ../release/hserver
+../final: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ../final
+.PHONY : ../final
 
 # fast build rule for target.
-../release/hserver/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/build
-.PHONY : ../release/hserver/fast
+../final/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/build
+.PHONY : ../final/fast
 
 src/lib/daemonizator.o: src/lib/daemonizator.cpp.o
 .PHONY : src/lib/daemonizator.o
 
 # target to build an object file
 src/lib/daemonizator.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/daemonizator.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/daemonizator.cpp.o
 .PHONY : src/lib/daemonizator.cpp.o
 
 src/lib/daemonizator.i: src/lib/daemonizator.cpp.i
@@ -142,7 +142,7 @@ src/lib/daemonizator.i: src/lib/daemonizator.cpp.i
 
 # target to preprocess a source file
 src/lib/daemonizator.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/daemonizator.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/daemonizator.cpp.i
 .PHONY : src/lib/daemonizator.cpp.i
 
 src/lib/daemonizator.s: src/lib/daemonizator.cpp.s
@@ -150,7 +150,7 @@ src/lib/daemonizator.s: src/lib/daemonizator.cpp.s
 
 # target to generate assembly for a file
 src/lib/daemonizator.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/daemonizator.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/daemonizator.cpp.s
 .PHONY : src/lib/daemonizator.cpp.s
 
 src/lib/errorproc.o: src/lib/errorproc.cpp.o
@@ -158,7 +158,7 @@ src/lib/errorproc.o: src/lib/errorproc.cpp.o
 
 # target to build an object file
 src/lib/errorproc.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/errorproc.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/errorproc.cpp.o
 .PHONY : src/lib/errorproc.cpp.o
 
 src/lib/errorproc.i: src/lib/errorproc.cpp.i
@@ -166,7 +166,7 @@ src/lib/errorproc.i: src/lib/errorproc.cpp.i
 
 # target to preprocess a source file
 src/lib/errorproc.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/errorproc.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/errorproc.cpp.i
 .PHONY : src/lib/errorproc.cpp.i
 
 src/lib/errorproc.s: src/lib/errorproc.cpp.s
@@ -174,7 +174,7 @@ src/lib/errorproc.s: src/lib/errorproc.cpp.s
 
 # target to generate assembly for a file
 src/lib/errorproc.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/errorproc.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/errorproc.cpp.s
 .PHONY : src/lib/errorproc.cpp.s
 
 src/lib/fdtransceiver.o: src/lib/fdtransceiver.cpp.o
@@ -182,7 +182,7 @@ src/lib/fdtransceiver.o: src/lib/fdtransceiver.cpp.o
 
 # target to build an object file
 src/lib/fdtransceiver.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/fdtransceiver.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/fdtransceiver.cpp.o
 .PHONY : src/lib/fdtransceiver.cpp.o
 
 src/lib/fdtransceiver.i: src/lib/fdtransceiver.cpp.i
@@ -190,7 +190,7 @@ src/lib/fdtransceiver.i: src/lib/fdtransceiver.cpp.i
 
 # target to preprocess a source file
 src/lib/fdtransceiver.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/fdtransceiver.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/fdtransceiver.cpp.i
 .PHONY : src/lib/fdtransceiver.cpp.i
 
 src/lib/fdtransceiver.s: src/lib/fdtransceiver.cpp.s
@@ -198,7 +198,7 @@ src/lib/fdtransceiver.s: src/lib/fdtransceiver.cpp.s
 
 # target to generate assembly for a file
 src/lib/fdtransceiver.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/fdtransceiver.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/fdtransceiver.cpp.s
 .PHONY : src/lib/fdtransceiver.cpp.s
 
 src/lib/unblock.o: src/lib/unblock.cpp.o
@@ -206,7 +206,7 @@ src/lib/unblock.o: src/lib/unblock.cpp.o
 
 # target to build an object file
 src/lib/unblock.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/unblock.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/unblock.cpp.o
 .PHONY : src/lib/unblock.cpp.o
 
 src/lib/unblock.i: src/lib/unblock.cpp.i
@@ -214,7 +214,7 @@ src/lib/unblock.i: src/lib/unblock.cpp.i
 
 # target to preprocess a source file
 src/lib/unblock.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/unblock.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/unblock.cpp.i
 .PHONY : src/lib/unblock.cpp.i
 
 src/lib/unblock.s: src/lib/unblock.cpp.s
@@ -222,7 +222,7 @@ src/lib/unblock.s: src/lib/unblock.cpp.s
 
 # target to generate assembly for a file
 src/lib/unblock.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/unblock.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/unblock.cpp.s
 .PHONY : src/lib/unblock.cpp.s
 
 src/lib/webproc.o: src/lib/webproc.cpp.o
@@ -230,7 +230,7 @@ src/lib/webproc.o: src/lib/webproc.cpp.o
 
 # target to build an object file
 src/lib/webproc.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/webproc.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/webproc.cpp.o
 .PHONY : src/lib/webproc.cpp.o
 
 src/lib/webproc.i: src/lib/webproc.cpp.i
@@ -238,7 +238,7 @@ src/lib/webproc.i: src/lib/webproc.cpp.i
 
 # target to preprocess a source file
 src/lib/webproc.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/webproc.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/webproc.cpp.i
 .PHONY : src/lib/webproc.cpp.i
 
 src/lib/webproc.s: src/lib/webproc.cpp.s
@@ -246,7 +246,7 @@ src/lib/webproc.s: src/lib/webproc.cpp.s
 
 # target to generate assembly for a file
 src/lib/webproc.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/webproc.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/webproc.cpp.s
 .PHONY : src/lib/webproc.cpp.s
 
 src/lib/worker.o: src/lib/worker.cpp.o
@@ -254,7 +254,7 @@ src/lib/worker.o: src/lib/worker.cpp.o
 
 # target to build an object file
 src/lib/worker.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/worker.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/worker.cpp.o
 .PHONY : src/lib/worker.cpp.o
 
 src/lib/worker.i: src/lib/worker.cpp.i
@@ -262,7 +262,7 @@ src/lib/worker.i: src/lib/worker.cpp.i
 
 # target to preprocess a source file
 src/lib/worker.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/worker.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/worker.cpp.i
 .PHONY : src/lib/worker.cpp.i
 
 src/lib/worker.s: src/lib/worker.cpp.s
@@ -270,7 +270,7 @@ src/lib/worker.s: src/lib/worker.cpp.s
 
 # target to generate assembly for a file
 src/lib/worker.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/lib/worker.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/lib/worker.cpp.s
 .PHONY : src/lib/worker.cpp.s
 
 src/main.o: src/main.cpp.o
@@ -278,7 +278,7 @@ src/main.o: src/main.cpp.o
 
 # target to build an object file
 src/main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/main.cpp.o
 .PHONY : src/main.cpp.o
 
 src/main.i: src/main.cpp.i
@@ -286,7 +286,7 @@ src/main.i: src/main.cpp.i
 
 # target to preprocess a source file
 src/main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/main.cpp.i
 .PHONY : src/main.cpp.i
 
 src/main.s: src/main.cpp.s
@@ -294,7 +294,7 @@ src/main.s: src/main.cpp.s
 
 # target to generate assembly for a file
 src/main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/src/main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
 # Help Target
@@ -305,7 +305,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... ../release/hserver"
+	@echo "... ../final"
 	@echo "... src/lib/daemonizator.o"
 	@echo "... src/lib/daemonizator.i"
 	@echo "... src/lib/daemonizator.s"

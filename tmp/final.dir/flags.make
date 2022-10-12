@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/Dimon/Stepic/httpserver/server_final/include
+CXX_INCLUDES = -I/home/box/final/include
 
 CXX_FLAGS =  -std=c++11 -lpthread -lrt -Wall
 

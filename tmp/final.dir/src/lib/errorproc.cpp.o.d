@@ -1,6 +1,5 @@
-CMakeFiles/../release/hserv.dir/src/lib/errorproc.cpp.o: \
- /home/Dimon/Stepic/httpserver/server_final/src/lib/errorproc.cpp \
- /usr/include/stdc-predef.h \
+CMakeFiles/../final.dir/src/lib/errorproc.cpp.o: \
+ /home/box/final/src/lib/errorproc.cpp /usr/include/stdc-predef.h \
  /usr/lib/gcc/x86_64-redhat-linux/11/include/stdarg.h \
  /usr/include/stdio.h /usr/include/bits/libc-header-start.h \
  /usr/include/features.h /usr/include/sys/cdefs.h \

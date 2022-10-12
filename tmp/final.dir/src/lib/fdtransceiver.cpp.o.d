@@ -1,6 +1,6 @@
-CMakeFiles/../release/hserv.dir/src/lib/fdtransceiver.cpp.o: \
- /home/Dimon/Stepic/httpserver/server_final/src/lib/fdtransceiver.cpp \
- /usr/include/stdc-predef.h /usr/include/c++/11/iostream \
+CMakeFiles/../final.dir/src/lib/fdtransceiver.cpp.o: \
+ /home/box/final/src/lib/fdtransceiver.cpp /usr/include/stdc-predef.h \
+ /usr/include/c++/11/iostream \
  /usr/include/c++/11/x86_64-redhat-linux/bits/c++config.h \
  /usr/include/bits/wordsize.h \
  /usr/include/c++/11/x86_64-redhat-linux/bits/os_defines.h \

@@ -1,2 +1,2 @@
-# Empty dependencies file for ../release/hserver.
+# Empty dependencies file for ../final.
 # This may be replaced when dependencies are built.

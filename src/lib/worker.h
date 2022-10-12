@@ -1,6 +1,4 @@
 #include <map>
-//#include "worker.h"
-
 
 class Workers{
 

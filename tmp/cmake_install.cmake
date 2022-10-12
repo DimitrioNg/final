@@ -1,4 +1,4 @@
-# Install script for directory: /home/Dimon/Stepic/httpserver/server_final
+# Install script for directory: /home/box/final
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/Dimon/Stepic/httpserver/server_final/tmp/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/box/final/tmp/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

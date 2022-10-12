@@ -1,0 +1,7 @@
+#serverIP="127.0.0.1"
+serverIP="192.168.252.6"
+serverPort="12345"
+serverDir="/home/box/final/"
+
+/home/box/final/final -h  $serverIP -p $serverPort -d $serverDir
+

@@ -54,16 +54,16 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/Dimon/Stepic/httpserver/server_final
+CMAKE_SOURCE_DIR = /home/box/final
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/Dimon/Stepic/httpserver/server_final/tmp
+CMAKE_BINARY_DIR = /home/box/final/tmp
 
 #=============================================================================
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/../release/hserver.dir/all
+all: CMakeFiles/../final.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -71,34 +71,34 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/../release/hserver.dir/clean
+clean: CMakeFiles/../final.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/../release/hserver.dir
+# Target rules for target CMakeFiles/../final.dir
 
 # All Build rule for target.
-CMakeFiles/../release/hserver.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/Dimon/Stepic/httpserver/server_final/tmp/CMakeFiles --progress-num=1,2,3,4,5,6,7,8 "Built target ../release/hserver"
-.PHONY : CMakeFiles/../release/hserver.dir/all
+CMakeFiles/../final.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/box/final/tmp/CMakeFiles --progress-num=1,2,3,4,5,6,7,8 "Built target ../final"
+.PHONY : CMakeFiles/../final.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/../release/hserver.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/Dimon/Stepic/httpserver/server_final/tmp/CMakeFiles 8
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/../release/hserver.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/Dimon/Stepic/httpserver/server_final/tmp/CMakeFiles 0
-.PHONY : CMakeFiles/../release/hserver.dir/rule
+CMakeFiles/../final.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/box/final/tmp/CMakeFiles 8
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/../final.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/box/final/tmp/CMakeFiles 0
+.PHONY : CMakeFiles/../final.dir/rule
 
 # Convenience name for target.
-../release/hserver: CMakeFiles/../release/hserver.dir/rule
-.PHONY : ../release/hserver
+../final: CMakeFiles/../final.dir/rule
+.PHONY : ../final
 
 # clean rule for target.
-CMakeFiles/../release/hserver.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/../release/hserver.dir/build.make CMakeFiles/../release/hserver.dir/clean
-.PHONY : CMakeFiles/../release/hserver.dir/clean
+CMakeFiles/../final.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/../final.dir/build.make CMakeFiles/../final.dir/clean
+.PHONY : CMakeFiles/../final.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.
