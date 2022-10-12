@@ -1,3 +1,0 @@
-/home/box/final/tmp/CMakeFiles/rebuild_cache.dir
-/home/box/final/tmp/CMakeFiles/edit_cache.dir
-/home/box/final/tmp/CMakeFiles/../final.dir
