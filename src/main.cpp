@@ -19,8 +19,8 @@
 #include "lib/unblock.h"
 #include "lib/daemonizator.h"
 
-#define MAX_WORKERS 2
-#define MAX_EPOLL_EVENTS 5
+#define MAX_WORKERS 5
+#define MAX_EPOLL_EVENTS 50
 
 int log_to_stderr = 0;
 
@@ -84,7 +84,7 @@ int main(int argc, char **argv){
     else cmd++; 
 	//std::cout << "cmd: " << cmd << std::endl;
     daemonize(cmd); 
-    //с этид пор процесс находится в состоянии демона, вывод сообщений возможет только через syslog 
+    //с этих пор процесс находится в состоянии демона, вывод сообщений возможет только через syslog 
     syslog(LOG_INFO, &output_str[0]);
     
     // регистрируем обработчик сигнала SIGCHLD
@@ -193,7 +193,7 @@ int main(int argc, char **argv){
                     int fd = workers.del_by_pid(pid); //удаляем упавшего воркера с соответствующим pid из списка воркеров
                     shutdown(fd, SHUT_RDWR); // разрываем сокет для упавшего воркера
                     if (epoll_ctl(master_epoll_fd, EPOLL_CTL_DEL, fd, &master_socket_event) == -1){ // удаляем дескриптор упавшего воркера из списка событий epoll
-				        syslog(LOG_ERR, "Unable to A ccept Slave Socket for Master %s", strerror(errno));
+				        syslog(LOG_ERR, "Unable to Accept Slave Socket for Master %s", strerror(errno));
                         //std::cout << "Master PID: " << getpid() << " Can not Delete Dead Worker Socket Event From Epoll: " << fd << std::endl;
                         }
                     //else std::cout <<  "Master PID: " << getpid() << "Delete Dead Worker Socket Event Fron Epoll: " << fd << "!!!" << std::endl;
@@ -208,6 +208,7 @@ int main(int argc, char **argv){
 		                } 
                     } //end while (!dwp_vect.emty())
                 send_fd_to_worker(workers.inc(), slave_socket);
+                close(slave_socket);
 				}
             else{ // данные пришли от какого-то воркера, вычитываем их
                 //std::cout << "Master PID: " << getpid() << "; Ivent From Worker!" << std::endl;

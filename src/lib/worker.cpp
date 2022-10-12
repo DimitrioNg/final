@@ -12,7 +12,7 @@
 #include "unblock.h"
 #include "webproc.h"
 
-#define MAX_EPOLL_EVENTS 5
+#define MAX_EPOLL_EVENTS 50
 #define READ_BUFFER_SIZE 4096
 
 
