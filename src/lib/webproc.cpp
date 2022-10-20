@@ -50,8 +50,8 @@ std::string http_ok_200(const std::string &data) {
 
 
 //void send_msg(int &fd, const std::string &request) {
-void send_msg(int fd, char request[], std::string serv_dir){
-    std::string str = request;
+void send_msg(int fd, std::string str, std::string serv_dir){
+    //std::string str = request;
     //std::cout << str;
     std::string f_name = parse_request(str);
     /**/

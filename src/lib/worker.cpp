@@ -6,6 +6,7 @@
 #include <unistd.h> //fork
 #include <sys/socket.h> //socketpair
 #include <syslog.h> //syslog
+#include <pthread.h>
 
 #include "worker.h"
 #include "fdtransceiver.h"
@@ -94,6 +95,73 @@ int Workers::del_by_fd (int fd){
         return workers_map.erase(fd);
         }  
 
+void worker_rx(int socket_fd, int epoll_fd, worker_fd_fifo_struct &fd_fifo ){
+    struct epoll_event worker_epoll_event;
+			    worker_epoll_event.data.fd = socket_fd;
+			    worker_epoll_event.events = EPOLLIN; 
+
+    static char read_buffer[READ_BUFFER_SIZE];
+    memset(read_buffer, 0, sizeof(read_buffer)); // типо чистим буффер
+    int recv_result = recv( socket_fd, //читаем данные из сокета
+							read_buffer,
+							READ_BUFFER_SIZE,
+							MSG_NOSIGNAL
+							);                     
+    if((recv_result==0) && (errno != EAGAIN)){ //ошибка чтения                   
+		shutdown(socket_fd, SHUT_RDWR); // разрываем сокет
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, socket_fd, &worker_epoll_event) == -1){ // удаляем дескриптор из списка событий epoll
+            syslog(LOG_ERR, "Worker: Can not Delete Slave Socket Event For Socket: %s", strerror(errno));
+			}
+        //else std::cout <<  "Worker PID: " << getpid() << "Delete Slave Socket Event for Socket: " << socket_fd << "!!!" << std::endl;
+			close(socket_fd); //и закрываем его
+			//sleep(8);
+            //теперь нужно сообщить мастеру что на одно зарегистрируемое событие у этого воркера стало меньше.
+            send_report_to_master(STDERR_FILENO);
+            
+        }    
+	else if(recv_result > 0){ // приняли какие-то данные
+		//std::cout << "Received Data from " << socket_fd << " socket: " << read_buffer; // << std::endl; 
+        //помещаем их в очередь
+        std::pair <int, std::string> p;
+        p.first = socket_fd; p.second = (std::string) &read_buffer[0];
+        pthread_mutex_lock(&fd_fifo.fd_queue_lock);
+        fd_fifo.fd_queue.push_back(p);
+        pthread_mutex_unlock(&fd_fifo.fd_queue_lock);
+		}
+    else if(recv_result < 0){
+        //std::cout << "Reading error: recv_result < 0!" << std::endl;
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_DEL, socket_fd, &worker_epoll_event) == -1){ 
+            syslog(LOG_ERR, "Worker: Can not Delete Slave Socket Event For Socket: %s", strerror(errno));
+			//return -1;   
+            }   
+        }     
+    }
+
+
+void* worker_tx_thread(void* arg){
+	worker_fd_fifo_struct *fd_fifo = (worker_fd_fifo_struct*)arg;
+	while(1){
+		pthread_mutex_lock(&fd_fifo->fd_queue_lock); //блокируем доступ к очеререди
+		pthread_cond_wait(&fd_fifo->fd_queue_cond, &fd_fifo->fd_queue_lock);
+		bool fd_queue_empty = fd_fifo->fd_queue.empty();
+        std::string working_dir = fd_fifo->working_dir;
+		pthread_mutex_unlock(&fd_fifo->fd_queue_lock); //разблокируем доступ к очеререди
+	    while (!fd_queue_empty){ //очередь не пуста
+		    pthread_mutex_lock(&fd_fifo->fd_queue_lock); //блокируем доступ к очеререди
+		    std::pair<int, std::string> tmp_pair = fd_fifo->fd_queue.front(); ////забираем первую пару из очереди
+		    fd_fifo->fd_queue.pop_front(); //удаляем ее из очереди
+		    pthread_mutex_unlock(&fd_fifo->fd_queue_lock); //разблокируем доступ к очеререди
+		    send_msg(tmp_pair.first, tmp_pair.second, working_dir); // обрабатываем первый элемент очереди
+		    //проверяем  не пуста ли очередь?
+		    pthread_mutex_lock(&fd_fifo->fd_queue_lock); //блокируем доступ к очеререди 
+		    fd_queue_empty = fd_fifo->fd_queue.empty();
+		    pthread_mutex_unlock(&fd_fifo->fd_queue_lock); //разблокируем доступ к очеререди
+		    }
+	//очередь оказалась пустой
+		} 
+	pthread_exit(0);
+	}
+
 
 int create_worker( int i,
                     int listen_fd, //прослушиваемый сокет
@@ -119,12 +187,39 @@ int create_worker( int i,
     close(master_worker_sockfd[1]); //закрываем открытые файловые дескрипторы канала
     close(listen_fd);               //файловый десриптор прослушиваемого сокета воркеру не нужен, поэтому закрываем его
                                     //сокет слушает и принимает мастер!!!
+    worker_fd_fifo_struct fd_fifo;
+    fd_fifo.working_dir = worker_dir;
+    pthread_t worker_tx_tid;
 
+    //инициализируем мьютекс, обслуживающий очередь
+    int s_cond;
+    s_cond = pthread_mutex_init(&fd_fifo.fd_queue_lock, NULL);
+    if (s_cond != 0){
+		syslog(LOG_ERR, "Worker: Mutex Creation ERROR! %s", strerror(errno));
+		return -1;
+		}
+    
+    //инициализируем условную переменную, обслуживающую очередь		
+    s_cond = pthread_cond_init(&fd_fifo.fd_queue_cond, NULL);
+    if (s_cond != 0){
+        syslog(LOG_ERR, "Worker: Condition Variable Creation ERROR! %s", strerror(errno));
+		return -1;
+		}
+
+    //создаем поток
+    s_cond = pthread_create(&worker_tx_tid,
+							NULL, //Атрибуты потока
+							worker_tx_thread, //функция потока 
+							&fd_fifo);
+    if (s_cond != 0){
+        syslog(LOG_ERR, "Worker: FD Transmitter Thread Creation ERROR! %s", strerror(errno));
+		return -1;
+		}
 
     // создаем дескриптор epoll для воркера
 	int worker_epoll_fd =  epoll_create1(0);
 	if (worker_epoll_fd == -1){
-		std::cerr << "Worker PID: " << getpid() << " Can't Open Epoll FD!!!" << std::endl;
+        syslog(LOG_ERR, "Worker: Can't Open Epoll FD! %s", strerror(errno));
 		//return -1;
 		}
     //else std::cout << "Worker PID: " << getpid() << " Sucessful Open Epoll FD!!!" << std::endl;
@@ -139,7 +234,7 @@ int create_worker( int i,
     
 
     if (epoll_ctl(worker_epoll_fd, EPOLL_CTL_ADD, STDERR_FILENO, &worker_epoll_event) == -1){ //регистрируем события от канала передачи сокетов от мастера к воркеру
-				    std::cout << "Worker PID: " << getpid() << " Can not registrate Slave Socket Event!!!" << std::endl;
+				    syslog(LOG_ERR, "Worker: Can not registrate Slave Socket Event! %s", strerror(errno));
 				    //return -1;   
                     }
 
@@ -176,51 +271,22 @@ int create_worker( int i,
                 else{
                     //сокет получен! 
                     set_nonblock(slave_socket); // делаем сокет неблокирующим
-                    //std::cout << "Worker PID: " << getpid() << "; Read Result: " << n << "; Recieve Socket: " << slave_socket << std::endl;
 			        worker_epoll_event.data.fd = slave_socket;
 			        worker_epoll_event.events = EPOLLIN;
                 //регистрируем его
                     if (epoll_ctl(worker_epoll_fd, EPOLL_CTL_ADD, slave_socket, &worker_epoll_event) == -1){
-				        syslog(LOG_ERR, "Unable to Registrate Worker Socket Event for Worker %s", strerror(errno));
-                        //std::cout << "Worker PID: " << getpid() << " Can not Registrate Slave Socket Event For Socket: " << slave_socket << std::endl;   
-                        }
-                    //else std::cout <<  "Worker PID: " << getpid() << "Registrate Slave Socket Event for Socket: " << slave_socket << "!!!" << std::endl;   
+				        syslog(LOG_ERR, "Unable to Registrate Worker Socket Event for Worker %s", strerror(errno));   
+                        }   
                     }
                 } // end if(worker_epoll_events[i].data.fd == STDERR_FILENO)
             else{ // событие от прослушиваемого сокета
-                //std::cout <<  "Worker PID: " << getpid() << "Event From Registered Slave Socket: " << worker_epoll_events[i].data.fd << "!!!" << std::endl;
-                static char read_buffer[READ_BUFFER_SIZE];
-                memset(read_buffer, 0, sizeof(read_buffer)); // типо чистим буффер
-                int recv_result = recv	(   worker_epoll_events[i].data.fd,
-											read_buffer,
-											READ_BUFFER_SIZE,
-											MSG_NOSIGNAL
-											);
-
-                //std::cout << "recv Result: " << recv_result << std::endl;                        
-                if((recv_result==0) && (errno != EAGAIN)){ //ошибка чтения
-					shutdown(worker_epoll_events[i].data.fd, SHUT_RDWR); // разрываем сокет
-                    if (epoll_ctl(worker_epoll_fd, EPOLL_CTL_DEL, worker_epoll_events[i].data.fd, &worker_epoll_event) == -1){ // удаляем дескриптор из списка событий epoll
-				        syslog(LOG_ERR, "Unable to Delete Slave Socket Event for Worker %s", strerror(errno));   
-                        }
-					close(worker_epoll_events[i].data.fd); //и закрываем его
-					
-                        //теперь нужно сообщить мастеру что на одно зарегистрируемое событие у этого воркера стало меньше.
-                    send_report_to_master(STDERR_FILENO);
-                    }
-				else if(recv_result > 0){ // приняли какие-то данные
-					//std::cout << "Received Data from " << worker_epoll_events[i].data.fd << " socket: " << read_buffer; // << std::endl; 
-                    //void send_msg(int &fd, const std::string &request)
-                    send_msg(worker_epoll_events[i].data.fd, read_buffer, worker_dir);
-					}
-                else if(recv_result < 0){
-                    std::cout << "Reading error: recv_result < 0!" << std::endl;
-                    if (epoll_ctl(worker_epoll_fd, EPOLL_CTL_DEL, worker_epoll_events[i].data.fd, &worker_epoll_event) == -1){ 
-				        syslog(LOG_ERR, "Unable to Delete Slave Socket Event for Worker %s", strerror(errno));
-                        }
-                    //else std::cout <<  "Worker PID: " << getpid() << "Registrate Slave Socket Event for Socket: " << worker_epoll_events[i].data.fd << "!!!" << std::endl;   
-                    }    
-                }    
+                //запускаем приемник сообщений от сокета
+                worker_rx(worker_epoll_events[i].data.fd, worker_epoll_fd, fd_fifo); //ставим прочитанные данные в очередь
+                //посылаем сигнал потоку передающему обработанное сообщение в сокет
+                pthread_mutex_lock(&fd_fifo.fd_queue_lock);
+                pthread_cond_signal(&fd_fifo.fd_queue_cond);
+                pthread_mutex_unlock(&fd_fifo.fd_queue_lock);  
+                } //end событие от прослушиваемого сокета
             } //end for!   
         }
     }
