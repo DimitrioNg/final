@@ -19,7 +19,7 @@
 #include "lib/unblock.h"
 #include "lib/daemonizator.h"
 
-#define MAX_WORKERS 5
+#define MAX_WORKERS 2
 #define MAX_EPOLL_EVENTS 50
 
 int log_to_stderr = 0;

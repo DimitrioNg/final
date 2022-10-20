@@ -162,6 +162,13 @@ void* worker_tx_thread(void* arg){
 	pthread_exit(0);
 	}
 
+void* worker_empty_thread(void* ){
+	
+	while(1){
+		
+		} 
+	pthread_exit(0);
+	}
 
 int create_worker( int i,
                     int listen_fd, //прослушиваемый сокет
@@ -215,6 +222,20 @@ int create_worker( int i,
         syslog(LOG_ERR, "Worker: FD Transmitter Thread Creation ERROR! %s", strerror(errno));
 		return -1;
 		}
+
+    //создаем поток
+    s_cond = pthread_create(&worker_tx_tid,
+							NULL, //Атрибуты потока
+							worker_empty_thread, //функция потока 
+							NULL);
+    if (s_cond != 0){
+        syslog(LOG_ERR, "Worker: Empty Thread Creation ERROR! %s", strerror(errno));
+		return -1;
+		}    
+    if (pthread_detach(worker_tx_tid) != 0) {
+                        syslog(LOG_ERR, "Worker: Empty Thread Detach ERROR! %s", strerror(errno));
+                        //exit(4);
+                        }
 
     // создаем дескриптор epoll для воркера
 	int worker_epoll_fd =  epoll_create1(0);
