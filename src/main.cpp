@@ -70,6 +70,14 @@ int cp_res = 0;
 	    }
     }
 
+void* empty_thread(void* ){
+	
+	while(1){
+		
+		} 
+	pthread_exit(0);
+	}
+
 
 int main(int argc, char **argv){
 	cmd_set cmd_set; // структура с параметрами коммандной строки
@@ -99,6 +107,24 @@ int main(int argc, char **argv){
         syslog(LOG_ERR, "Unable to Intercept the SIGCHLD Signal: %s", strerror(errno));
         exit(1);
         }
+
+    // создаем пустой поток
+    pthread_t tid;
+    int s_cond;
+    s_cond = pthread_create(&tid,
+							NULL, //Атрибуты потока
+							empty_thread, //функция потока 
+							NULL);
+    if (s_cond != 0){
+        syslog(LOG_ERR, "Worker: Empty Thread Creation ERROR! %s", strerror(errno));
+		return -1;
+		}    
+    if (pthread_detach(tid) != 0) {
+                        syslog(LOG_ERR, "Worker: Empty Thread Detach ERROR! %s", strerror(errno));
+                        //exit(4);
+                        }
+
+
 
     //создадим мастерсокет
     int master_socket = socket( //- системный вызов socket

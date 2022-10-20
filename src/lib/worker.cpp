@@ -222,8 +222,10 @@ int create_worker( int i,
         syslog(LOG_ERR, "Worker: FD Transmitter Thread Creation ERROR! %s", strerror(errno));
 		return -1;
 		}
-
-    //создаем поток
+    /*
+    // создаем пустой поток
+    //pthread_t worker_tx_tid;
+    //int s_cond;
     s_cond = pthread_create(&worker_tx_tid,
 							NULL, //Атрибуты потока
 							worker_empty_thread, //функция потока 
@@ -236,7 +238,7 @@ int create_worker( int i,
                         syslog(LOG_ERR, "Worker: Empty Thread Detach ERROR! %s", strerror(errno));
                         //exit(4);
                         }
-
+    */
     // создаем дескриптор epoll для воркера
 	int worker_epoll_fd =  epoll_create1(0);
 	if (worker_epoll_fd == -1){
