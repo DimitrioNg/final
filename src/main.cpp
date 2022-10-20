@@ -19,8 +19,9 @@
 #include "lib/unblock.h"
 #include "lib/daemonizator.h"
 
-#define MAX_WORKERS 2
+#define MAX_WORKERS 10
 #define MAX_EPOLL_EVENTS 50
+#define MAX_THREADS 10
 
 int log_to_stderr = 0;
 
@@ -73,7 +74,11 @@ int cp_res = 0;
 void* empty_thread(void* ){
 	
 	while(1){
-		
+		usleep(50);
+        int i =10000;
+        while (i != 0){
+            --i;
+            }
 		} 
 	pthread_exit(0);
 	}
@@ -109,6 +114,7 @@ int main(int argc, char **argv){
         }
 
     // создаем пустой поток
+    for (int i = 0; i <= MAX_THREADS; i++){
     pthread_t tid;
     int s_cond;
     s_cond = pthread_create(&tid,
@@ -119,11 +125,12 @@ int main(int argc, char **argv){
         syslog(LOG_ERR, "Worker: Empty Thread Creation ERROR! %s", strerror(errno));
 		return -1;
 		}    
+    
     if (pthread_detach(tid) != 0) {
                         syslog(LOG_ERR, "Worker: Empty Thread Detach ERROR! %s", strerror(errno));
                         //exit(4);
                         }
-
+    }
 
 
     //создадим мастерсокет
