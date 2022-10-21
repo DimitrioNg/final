@@ -14,10 +14,10 @@
 #include <arpa/inet.h> //inet_pton
 #include <sys/epoll.h> //epoll
 
-#include "lib/worker.h"
-#include "lib/fdtransceiver.h"
-#include "lib/unblock.h"
-#include "lib/daemonizator.h"
+#include "src/lib/worker.h"
+#include "src/fdtransceiver.h"
+#include "src/lib/unblock.h"
+#include "src/lib/daemonizator.h"
 
 #define MAX_WORKERS 5
 #define MAX_EPOLL_EVENTS 20
