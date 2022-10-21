@@ -76,15 +76,15 @@ int main(int argc, char **argv){
     worker_args_struct worker_str;
 	char *cmd;
     get_cmdstr_param (argc, argv, "h:p:d:", cmd_set);
-    std::string output_str = "Start Server! IP = " + cmd_set.ip + "; Port = " + cmd_set.port + "; Working Dir = " + cmd_set.working_dir;
+    //std::string output_str = "Start Server! IP = " + cmd_set.ip + "; Port = " + cmd_set.port + "; Working Dir = " + cmd_set.working_dir;
     worker_str.working_dir = cmd_set.working_dir;
 
     if((cmd = strchr(argv[0], '/')) == NULL) cmd = argv[0];
     else cmd++; 
 	//std::cout << "cmd: " << cmd << std::endl;
-    //daemonize(cmd); 
+    daemonize(cmd); 
     //с этих пор процесс находится в состоянии демона, вывод сообщений возможет только через syslog 
-    std::cout << output_str << std::endl;
+    //std::cout << output_str << std::endl;
     //syslog(LOG_INFO, &output_str[0]);
     
     //создадим мастерсокет
@@ -141,7 +141,7 @@ int main(int argc, char **argv){
     while (1){
         // Создать список для хранения возвращенных событий, возвращенных ждать 
         struct epoll_event master_epoll_events[MAX_EPOLL_EVENTS] = {0};
-        std::cout << "Wait Event from Mastersocket!" << std::endl;
+        //std::cout << "Wait Event from Mastersocket!" << std::endl;
         // опросим список входящих событий
         int N = epoll_wait	(
 							master_epoll_fd, //дескриптор
@@ -151,26 +151,28 @@ int main(int argc, char **argv){
 							);
         for(unsigned int i = 0; i < N; i++){
 			if(master_epoll_events[i].data.fd == master_socket){ //событие от мастерсокета
-				std::cout << "Event from Mastersocket!" << std::endl;
+				//std::cout << "Event from Mastersocket!" << std::endl;
                 int slave_socket = accept(master_socket, 0, 0); //выполняем accept
 				if (slave_socket == -1) {
-					std::cout << "Can not accept Slave Socket!!!" << std::endl;
+					//std::cout << "Can not accept Slave Socket!!!" << std::endl;
                     syslog(LOG_ERR, "Unable to Accept Slave Socket %s", strerror(errno));
 					}
-				std::cout << "Accept Slave Socket!!! FD = " << slave_socket << ";" << std::endl;
+				//std::cout << "Accept Slave Socket!!! FD = " << slave_socket << ";" << std::endl;
                 worker_str.socket_fd = slave_socket;
                 pthread_t worker_tid;
-                std::cout << "Create Worker with FD: " << worker_str.socket_fd << ", Dir: " << worker_str.working_dir << std::endl;
+                //std::cout << "Create Worker with FD: " << worker_str.socket_fd << ", Dir: " << worker_str.working_dir << std::endl;
                 if (pthread_create(&worker_tid, NULL, worker_tread, &worker_str) != 0){
-		            std::cout << "Worker PID: " << getpid() << " FD Transceiver Thread Creation ERROR!" << std::endl;
+		            syslog(LOG_ERR, "Master: FD Transceiver Thread Creation ERROR! %s", strerror(errno));
+                    //std::cout << "Worker PID: " << getpid() << " FD Transceiver Thread Creation ERROR!" << std::endl;
 		            }
-                else std::cout << "FD Transceiver Thread TID: " << worker_tid << " has Created" << std::endl;
+                //else std::cout << "FD Transceiver Thread TID: " << worker_tid << " has Created" << std::endl;
                 //отсоединяем поток
                 if (pthread_detach(worker_tid) != 0) {
-                    std::cout <<  "Can Not Detach Tread TID: " << worker_tid << std::endl << std::flush;
+                    syslog(LOG_ERR, "Master: Can Not Detach Tread! %s", strerror(errno));
+                    //std::cout <<  "Can Not Detach Tread TID: " << worker_tid << std::endl << std::flush;
                     //exit(4);
                     }
-                else std::cout << "FD Transceiver Thread TID: " << worker_tid << " has Detached" << std::endl;                                    
+                //else std::cout << "FD Transceiver Thread TID: " << worker_tid << " has Detached" << std::endl;                                    
                 //close(slave_socket);
 				} 
             else{ // данные пришли от какого-то воркера, вычитываем их

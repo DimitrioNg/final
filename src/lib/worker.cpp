@@ -40,7 +40,7 @@ int worker_rx_tx(int socket_fd, std::string serv_dir){
 							MSG_NOSIGNAL
 							);                     
     if(((recv_result==0) && (errno != EAGAIN))||(recv_result < 0)){ //ошибка чтения                   
-       std::cout << "Worker TID: " << gettid() << " Socket Reading ERROR: recv_result = " << recv_result << std::endl;
+       //std::cout << "Worker TID: " << gettid() << " Socket Reading ERROR: recv_result = " << recv_result << std::endl;
         return -1; 
         }
         /*
@@ -55,7 +55,7 @@ int worker_rx_tx(int socket_fd, std::string serv_dir){
         } 
         */
     else{ // приняли какие-то данные
-		std::cout << "Worker TID: " << gettid() << " Received Data from " << socket_fd << " socket: " << read_buffer; // << std::endl; 
+		//std::cout << "Worker TID: " << gettid() << " Received Data from " << socket_fd << " socket: " << read_buffer; // << std::endl; 
         send_msg(socket_fd, (std::string) &read_buffer[0], serv_dir);
         return 0;
         }          
@@ -63,21 +63,20 @@ int worker_rx_tx(int socket_fd, std::string serv_dir){
 
 
 void* worker_tread(void* arg){
-    std::cout << "Worker TID: " << gettid() << " Start!" << std::endl;
+    //std::cout << "Worker TID: " << gettid() << " Start!" << std::endl;
     //worker_args_struct* worker_str = (worker_args_struct*) arg;
     worker_args_struct* worker_str = (worker_args_struct*) arg;
     
     int socket_fd = worker_str->socket_fd;
     std::string working_dir = worker_str->working_dir;
-    //sleep(5);
-    //std::cout << "Чих! " << std::endl;
-    std::cout << "Worker TID: " << gettid() << " Socket: " << socket_fd << ", Dir: " << working_dir << std::endl;
+    //std::cout << "Worker TID: " << gettid() << " Socket: " << socket_fd << ", Dir: " << working_dir << std::endl;
     
     set_nonblock(socket_fd); // делаем сокет неблокирующим
 
     int worker_epoll_fd =  epoll_create1(0);
 	if (worker_epoll_fd == -1){
-		std::cout << "Worker TID: " << gettid() << " Can't Open Epoll FD!!!" << std::endl;
+        syslog(LOG_ERR, "Worker Can't Open Epoll FD!!! %s", strerror(errno));
+		//std::cout << "Worker TID: " << gettid() << " Can't Open Epoll FD!!!" << std::endl;
 		//return -1;
 		}
     struct epoll_event worker_epoll_event;
@@ -85,11 +84,12 @@ void* worker_tread(void* arg){
 		worker_epoll_event.events = EPOLLIN;
     
     if (epoll_ctl(worker_epoll_fd, EPOLL_CTL_ADD, socket_fd, &worker_epoll_event) == -1){ //регистрируем события от канала передачи сокетов от мастера к воркеру
-		std::cout << "Worker TID: " << gettid() << " Can not registrate Slave Socket Event!!!" << std::endl;
+		syslog(LOG_ERR, "Worker Can not registrate Slave Socket Event!!! %s", strerror(errno));
+        //std::cout << "Worker TID: " << gettid() << " Can not registrate Slave Socket Event!!!" << std::endl;
 				    //return -1;   
         }
     while(1){
-        std::cout <<  "Worker TID: " << gettid() << " is Waiting for Epoll Event!" << std::endl;
+        //std::cout <<  "Worker TID: " << gettid() << " is Waiting for Epoll Event!" << std::endl;
         struct epoll_event worker_epoll_events[MAX_EPOLL_EVENTS];
         int N = epoll_wait	( // ждем сщбытий от Epoll
 							worker_epoll_fd, //дескриптор
@@ -99,19 +99,19 @@ void* worker_tread(void* arg){
 							);
         for(unsigned int i = 0; i < N; i++){ // пробегаемся по нашим событиям
             if(worker_epoll_events[i].data.fd == socket_fd){
-                std::cout << "Worker TID: " << gettid() << "; Ivent From Registered Socket FD: " << worker_epoll_events[i].data.fd << std::endl;
+                //std::cout << "Worker TID: " << gettid() << "; Ivent From Registered Socket FD: " << worker_epoll_events[i].data.fd << std::endl;
                 int res = worker_rx_tx(worker_epoll_events[i].data.fd,  working_dir);
                 if (res < 0){
                     shutdown(socket_fd, SHUT_RDWR); // разрываем сокет
                     close(socket_fd); //и закрываем его
                     close(worker_epoll_fd); // закрываем дескрипор epoll
-                    std::cout << "Worker TID: " << gettid() << " has Closed!" << std::endl;
+                    //std::cout << "Worker TID: " << gettid() << " has Closed!" << std::endl;
                     pthread_exit(0);
                     };
                 }
             else{ // событие от прослушиваемого сокета
-                std::cout << "Worker TID: " << gettid() << " Херня вышла!" << std::endl;
-                std::cout << "Worker TID: " << gettid() << " has Closed!" << std::endl;
+                //std::cout << "Worker TID: " << gettid() << " Херня вышла!" << std::endl;
+                //std::cout << "Worker TID: " << gettid() << " has Closed!" << std::endl;
                 pthread_exit(0);
                 } // end else событие от прослушиваемого сокета   
             } //end for!
