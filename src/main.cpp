@@ -71,68 +71,22 @@ int cp_res = 0;
 	    }
     }
 
-void* empty_thread(void* ){
-	
-	while(1){
-		usleep(50);
-        int i =10000;
-        while (i != 0){
-            --i;
-            }
-		} 
-	pthread_exit(0);
-	}
-
-
 int main(int argc, char **argv){
 	cmd_set cmd_set; // структура с параметрами коммандной строки
+    worker_args_struct worker_str;
 	char *cmd;
     get_cmdstr_param (argc, argv, "h:p:d:", cmd_set);
     std::string output_str = "Start Server! IP = " + cmd_set.ip + "; Port = " + cmd_set.port + "; Working Dir = " + cmd_set.working_dir;
-	//std::cout << output_str << std::endl;
-    //std::cout << "Start Server! IP = " << cmd_set.ip << "; Port = " << cmd_set.port << "; Working Dir = " << cmd_set.working_dir << std::endl;
-	//std::cout << "argv[0]=" << argv[0] << std::endl;
-    
+    worker_str.working_dir = cmd_set.working_dir;
+
     if((cmd = strchr(argv[0], '/')) == NULL) cmd = argv[0];
     else cmd++; 
 	//std::cout << "cmd: " << cmd << std::endl;
-    daemonize(cmd); 
+    //daemonize(cmd); 
     //с этих пор процесс находится в состоянии демона, вывод сообщений возможет только через syslog 
-    syslog(LOG_INFO, &output_str[0]);
+    std::cout << output_str << std::endl;
+    //syslog(LOG_INFO, &output_str[0]);
     
-    // регистрируем обработчик сигнала SIGCHLD
-    // для этого объявляем структуру типа sigaction 
-    struct sigaction sa;
-    // и заполняем ее
-    sa.sa_handler = &handle_sigchld; // указываем адрес обработчика
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
-    // регистрируем обработчик с помощью системного вызова POSIX sigaction 
-    if (sigaction(SIGCHLD, &sa, 0) == -1) { 
-        syslog(LOG_ERR, "Unable to Intercept the SIGCHLD Signal: %s", strerror(errno));
-        exit(1);
-        }
-
-    // создаем пустой поток
-    for (int i = 0; i <= MAX_THREADS; i++){
-    pthread_t tid;
-    int s_cond;
-    s_cond = pthread_create(&tid,
-							NULL, //Атрибуты потока
-							empty_thread, //функция потока 
-							NULL);
-    if (s_cond != 0){
-        syslog(LOG_ERR, "Worker: Empty Thread Creation ERROR! %s", strerror(errno));
-		return -1;
-		}    
-    
-    if (pthread_detach(tid) != 0) {
-                        syslog(LOG_ERR, "Worker: Empty Thread Detach ERROR! %s", strerror(errno));
-                        //exit(4);
-                        }
-    }
-
-
     //создадим мастерсокет
     int master_socket = socket( //- системный вызов socket
 		AF_INET,		//параметр domain = протокол IPv4
@@ -183,24 +137,11 @@ int main(int argc, char **argv){
         exit(1);
 		}
 
-    //создаем объект содержащий описание воркеров
-    Workers workers;
-
-    //создаем воркеров в количестве MAX_WORKERS 
-    for(unsigned int i = 0; i < MAX_WORKERS; i++){
-        int fd =  create_worker(i, master_epoll_fd, workers, cmd_set.working_dir);
-        master_socket_event.data.fd = fd;
-        master_socket_event.events = EPOLLIN;
-        if (epoll_ctl(master_epoll_fd, EPOLL_CTL_ADD, fd, &master_socket_event) == -1){
-            syslog(LOG_ERR, "Unable to Registrate Epoll Worker Socket Event %s", strerror(errno));
-		    exit(1);
-		    }
-        }
-
+    
     while (1){
         // Создать список для хранения возвращенных событий, возвращенных ждать 
         struct epoll_event master_epoll_events[MAX_EPOLL_EVENTS] = {0};
-
+        std::cout << "Wait Event from Mastersocket!" << std::endl;
         // опросим список входящих событий
         int N = epoll_wait	(
 							master_epoll_fd, //дескриптор
@@ -210,59 +151,32 @@ int main(int argc, char **argv){
 							);
         for(unsigned int i = 0; i < N; i++){
 			if(master_epoll_events[i].data.fd == master_socket){ //событие от мастерсокета
-				//std::cout << "Event from Mastersocket!" << std::endl;
+				std::cout << "Event from Mastersocket!" << std::endl;
                 int slave_socket = accept(master_socket, 0, 0); //выполняем accept
 				if (slave_socket == -1) {
-					//std::cout << "Can not accept Slave Socket!!!" << std::endl;
+					std::cout << "Can not accept Slave Socket!!!" << std::endl;
                     syslog(LOG_ERR, "Unable to Accept Slave Socket %s", strerror(errno));
 					}
-					//std::cout << "Accept Slave Socket!!! FD = " << slave_socket << ";" << std::endl;
-					 
-                //получаем очечредной/свободный файловый дескриптор сокета и отправляем данные воркеру
-                //но, сначала проверяем не упал ли кто то из воркеров? О таком положение дел говорит ненулевая длина вектора dwp_vect
-                while (!dwp_vect.empty()){
-                    pid_t pid = dwp_vect.back(); 
-                    dwp_vect.pop_back();
-                    int fd = workers.del_by_pid(pid); //удаляем упавшего воркера с соответствующим pid из списка воркеров
-                    shutdown(fd, SHUT_RDWR); // разрываем сокет для упавшего воркера
-                    if (epoll_ctl(master_epoll_fd, EPOLL_CTL_DEL, fd, &master_socket_event) == -1){ // удаляем дескриптор упавшего воркера из списка событий epoll
-				        syslog(LOG_ERR, "Unable to Accept Slave Socket for Master %s", strerror(errno));
-                        //std::cout << "Master PID: " << getpid() << " Can not Delete Dead Worker Socket Event From Epoll: " << fd << std::endl;
-                        }
-                    //else std::cout <<  "Master PID: " << getpid() << "Delete Dead Worker Socket Event Fron Epoll: " << fd << "!!!" << std::endl;
-					close(fd); //и закрываем его
-                    fd = create_worker(1, master_epoll_fd, workers, cmd_set.working_dir); // создаем нового воркера вместо упавшего, получаем файловый дескриптор его пары сокетов
-                    //регистрием это дестриптов в epoll
-                    master_socket_event.data.fd = fd;
-                    master_socket_event.events = EPOLLIN;
-                    if (epoll_ctl(master_epoll_fd, EPOLL_CTL_ADD, fd, &master_socket_event) == -1){
-		                syslog(LOG_ERR, "Unable to Registrate Worker Socket Event for Master %s", strerror(errno));
-                        //std::cerr << "Can not registrate Worker Socket Event!!!" << std::endl;
-		                } 
-                    } //end while (!dwp_vect.emty())
-                send_fd_to_worker(workers.inc(), slave_socket);
-                close(slave_socket);
-				}
+				std::cout << "Accept Slave Socket!!! FD = " << slave_socket << ";" << std::endl;
+                worker_str.socket_fd = slave_socket;
+                pthread_t worker_tid;
+                std::cout << "Create Worker with FD: " << worker_str.socket_fd << ", Dir: " << worker_str.working_dir << std::endl;
+                if (pthread_create(&worker_tid, NULL, worker_tread, &worker_str) != 0){
+		            std::cout << "Worker PID: " << getpid() << " FD Transceiver Thread Creation ERROR!" << std::endl;
+		            }
+                else std::cout << "FD Transceiver Thread TID: " << worker_tid << " has Created" << std::endl;
+                //отсоединяем поток
+                if (pthread_detach(worker_tid) != 0) {
+                    std::cout <<  "Can Not Detach Tread TID: " << worker_tid << std::endl << std::flush;
+                    //exit(4);
+                    }
+                else std::cout << "FD Transceiver Thread TID: " << worker_tid << " has Detached" << std::endl;                                    
+                //close(slave_socket);
+				} 
             else{ // данные пришли от какого-то воркера, вычитываем их
                 //std::cout << "Master PID: " << getpid() << "; Ivent From Worker!" << std::endl;
-                int socket_from_worker;
-                char buf[10];
-                ssize_t n;
-                n = sock_fd_read (master_epoll_events[i].data.fd, // читаем данные без дескриптора из полученного сокета  
-                            buf, 
-                            sizeof(buf), 
-                            &socket_from_worker
-                            );
-                if (n <= 0){
-                    //err_quit("read_fd returned 0");
-                    syslog(LOG_ERR, "Master: read_fd returned 0 %s", strerror(errno));
-                    //std::cout << "Master PID: " << getpid() << "; read_fd returned 0" << std::endl;
-                    }
-                else if(socket_from_worker < 0){
-                    //std::cout << "Master PID: " << getpid() << "; no descriptor from read_fd!! Message From Worker with FD " << master_epoll_events[i].data.fd << ": "<< &buf[0] << ";" << std::endl;
-                    workers.dec(master_epoll_events[i].data.fd); // уменьшаем счетчик прослушиваемых сокетов для данного воркера
-                    }             
-                }				
+                    syslog(LOG_ERR, "Master: read_fd return NO Master Socket! %s", strerror(errno));
+                }    				
 			} // end for!
     } //  end while!
     
