@@ -74,7 +74,7 @@ int cp_res = 0;
 void* empty_thread(void* ){
 	
 	while(1){
-		usleep(50);
+		usleep(150);
         int i =10000;
         while (i != 0){
             --i;
