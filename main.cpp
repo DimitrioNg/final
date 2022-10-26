@@ -1,346 +1,280 @@
 //Веб-сервер должен запускаться командой: /home/box/final/final -h <ip> -p <port> -d <directory>
 //
-#include <sstream>
-#include <unistd.h>
-#include <fcntl.h>
-#include <netinet/in.h>
-#include <cerrno>
-#include <sys/epoll.h>
-#include <cstring>
-#include <pthread.h>
-#include <string>
-#include <regex>
 #include <iostream>
-#include <signal.h>
-#include <sys/stat.h>
-#include "getopt.h"
+#include <sstream>
+#include <cstring>
+#include <vector>
+#include <utility>
+#include <queue>
+#include <map>
+#include <vector>
 
-#include <getopt.h>
-#include <cstdio>
-#include <cstdlib>
-#include <sys/socket.h>
-#include <arpa/inet.h>
+#include <unistd.h> //getopt
+#include <syslog.h> //syslog
+#include <sys/wait.h> //waitpid
+#include <sys/types.h> //bind
+#include <sys/socket.h> //bind, listen
+#include <netinet/in.h>
+#include <arpa/inet.h> //inet_pton
+#include <sys/epoll.h> //epoll
 
-std::string serv_dir{};
+#include "lib/worker.h"
+#include "lib/fdtransceiver.h"
+#include "lib/unblock.h"
+#include "lib/daemonizator.h"
 
-#define MAX_EVENT_NUMBER 1024
-#define BUFFER_SIZE 10
+#define MAX_WORKERS 5
+#define MAX_EPOLL_EVENTS 20
+#define MAX_THREADS 5
 
-struct globalArgs_t {
-    uint16_t port;           /* param -p */
-    const char *host;        /* param -h */
-    const char *dir_name;    /* param -d */
-} globalArgs;
-
-static const char *optString = "h:p:d:?";
-
-void display_usage(const char *prg_name) {
-    puts("stepik final task simple epoll http-server");
-    printf("%s -h <ip> -p <port> -d <directory>/n", prg_name);
-    exit(EXIT_FAILURE);
-}
-
-void get_command_line(const int &argc, char **argv, sockaddr_in &s_in, std::string& serv_dir) {
-    int opt = 0;
-    globalArgs.port = 0;
-    globalArgs.host = nullptr;
-    globalArgs.dir_name = nullptr;
-    opt = getopt(argc, argv, optString);
-
-    while (opt != -1) {
-        switch (opt) {
-            case ('h'):
-                globalArgs.host = optarg;
-                break;
-            case ('d'):
-                globalArgs.dir_name = optarg;
-                break;
-            case ('p'):
-                globalArgs.port = atoi(optarg);
-                break;
-            case '?':
-                display_usage(argv[0]);
-                break;
-            default:
-                break;
-        }
-        opt = getopt(argc, argv, optString);
-    }
-
-    if(argc<4) {display_usage(argv[0]);exit(1);}
-    s_in.sin_addr.s_addr = inet_addr(globalArgs.host);
-    s_in.sin_port = htons(globalArgs.port);
-    serv_dir =  globalArgs.dir_name;
-
-}
+typedef int worker_id_t;
+typedef int worker_fd_t;
 
 
 
+int log_to_stderr = 0;
 
-
-
-struct fds {
-    int epollfd;
-    int sockfd;
+struct cmd_set{
+std::string port = "";
+std::string ip = "";
+std::string working_dir = "";
 };
 
-int set_nonblock(int fd) {
-    int flags;
-#if defined(O_NONBLOCK)
-    if (-1 == (flags = fcntl(fd, F_GETFL, 0)))
-        flags = 0;
-    return fcntl(fd, F_SETFL, (unsigned) flags | O_NONBLOCK);
-#else
-    flags = 1;
-    return ioctl(fd, FIONBIO, &flags);
-#endif
+struct worker_struct {
+    int fd; // передаваемый воркеру файловый дескриптор
+    pthread_t tid;
+    int epoll_fd; // передаваемый воркеру дескриптор epoll
+    bool err; // 0 - no errorrs; -1 - error is present
+    bool run; // 1 - worker is running
+    std::string working_dir; //передаваемая воркеру, рабочая директория
+    pthread_cond_t start;   //условная переменная запускающая воркера
+    pthread_mutex_t start_mutex; 
+    };
 
-}
+//структура для очереди  передачи сокетов от главного процесса (принимающего входящие соединения) к синхронизатору, обслуживающему воркетров
+struct fd_fifo_struct{
+    std::queue<int> fd_queue;
+    pthread_mutex_t fd_queue_mutex;
+    };
 
-inline void AddFd(int epollfd, int fd, bool oneshot) {
-    struct epoll_event event;
-    event.data.fd = fd;
-    event.events = EPOLLIN | EPOLLET;
-    if (oneshot)
-        event.events |= EPOLLONESHOT;
+typedef std::map<worker_id_t, worker_struct> workers_map;
 
-    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
-    set_nonblock(fd);
-}
+//структура очереди ожидающих воркеров, буфер + мьютекс
+struct waiting_workers_fifo_struct{
+    std::queue<std::pair<worker_id_t, worker_fd_t>> fifo_buf;
+    pthread_cond_t work_done; //условная переменная сигнализирующая о том что воркер окончил свою работу
+    pthread_mutex_t mutex;
+    };
 
-inline void reset_oneshot(int &epfd, int &fd) {
-    struct epoll_event event;
-    event.data.fd = fd;
-    event.events = EPOLLIN | EPOLLET | EPOLLONESHOT;
-    epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &event);
-}
+typedef std::map<worker_id_t, worker_struct> workers_map;
 
-std::string parse_request(const std::string &for_parse) {
+struct  workers_struct{
+    pthread_mutex_t workers_mutex; //мьютекс доступа к структуре воркеров
+    workers_map workers_map;
+    };
 
-    std::size_t pos1 = for_parse.find("GET /");
-    std::size_t pos2 = for_parse.find(" HTTP/1");
-    if (pos1 == std::string::npos || pos2 == std::string::npos) return "";
-    std::string ind = for_parse.substr(pos1 + 5, pos2 - pos1 - 5);
-    if (ind.size() == 0) return "index.html";
+//структура передачи аргументов потоку синхронизатора
+struct syncro_args_struct{
+    fd_fifo_struct &fd_fifo;
+    workers_struct &workers;
+    waiting_workers_fifo_struct &waiting_workers;
+    pthread_cond_t alarm;
+    pthread_mutex_t alarm_mutex;
+    };
 
-    auto pos = ind.find('?');
-    if (pos == std::string::npos)
-        return ind;
-    else
-        return ind.substr(0, pos);
-}
+//структура передачи аргументов потоку воркера
+struct worker_args_struct{
+    workers_struct &workers;
+    waiting_workers_fifo_struct &waiting_workers;
+    int worker_id;
+    };
 
-std::string http_error_404() {
-    std::stringstream ss;
-    // Create a result with "HTTP/1.0 404 NOT FOUND"
-    ss << "HTTP/1.0 404 NOT FOUND";
-    ss << "\r\n";
-    ss << "Content-length: 0";
-    ss << "\r\n";
-    ss << "Content-Type: text/html";
-    ss << "\r\n\r\n";
-    return ss.str();
-}
-
-std::string http_ok_200(const std::string &data) {
-    std::stringstream ss;
-    ss << "HTTP/1.0 200 OK";
-    ss << "\r\n";
-    ss << "Content-length: ";
-    ss << data.size();
-    ss << "\r\n";
-    ss << "Content-Type: text/html";
-    ss << "\r\n";
-    // ss << "Connection: close\r\n";
-    ss << "\r\n";
-    ss << data;
-    return ss.str();
-}
-
-inline void f(int &fd, const std::string &request) {
-    std::string f_name = parse_request(request);
-    if (f_name == "") {
-        std::string err = http_error_404();
-        send(fd, err.c_str(), err.length() + 1, MSG_NOSIGNAL);
-        return;
-    } else {
-        std::stringstream ss;
-        ss << serv_dir;
-        if (serv_dir.length() > 0 && serv_dir[serv_dir.length() - 1] != '/')
-            ss << "/";
-        ss << f_name;
-
-        FILE *file_in = fopen(ss.str().c_str(), "r");
-        char arr[1024];
-        if (file_in) {
-            std::stringstream ss;
-            std::string tmp_str;
-            char c = '\0';
-            while ((c = fgetc(file_in)) != EOF) {
-                ss << c;
-            }
-            tmp_str = ss.str();
-            std::string ok = http_ok_200(tmp_str);
-            send(fd, ok.c_str(), ok.size(), MSG_NOSIGNAL);
-            fclose(file_in);
-        } else {
-            std::string err = http_error_404();
-            send(fd, err.c_str(), err.size(), MSG_NOSIGNAL);
-        }
-
-    }
-}
-
-
-void *worker(void *arg) {
-    int sockfd = ((struct fds *) arg)->sockfd;
-    int epollfd = ((struct fds *) arg)->epollfd;
-    printf("start new thread to receive data on fd: %d\n", sockfd);
-    char buf[BUFFER_SIZE];
-    memset(buf, '\0', BUFFER_SIZE);
-
-    std::string receive_buf;
-
-    for (;;) {
-        int ret = recv(sockfd, buf, BUFFER_SIZE - 1, 0);
-        if (ret == 0) {
-            close(sockfd);
-            printf("foreigner closed the connection\n");
+void get_cmdstr_param (int &argc, char *argv[], std::string params, cmd_set &cmd_set){
+int cp_res = 0;
+    while ( (cp_res = getopt(argc, argv, "h:p:d:")) != -1){
+		switch (cp_res){
+		    case 'h': 
+                //std::cout << "found argument h = " << optarg << std::endl;
+                cmd_set.ip = optarg;
             break;
-        } else if (ret < 0) {
-            if (errno = EAGAIN) {
-                reset_oneshot(epollfd, sockfd);
-                //  printf("full string = %s\n", receive_buf);
-                f(sockfd, receive_buf);
-
-                break;
-            }
-        } else {
-            receive_buf += buf;
-        }
-    }
-    printf("end thread receiving data on fd: %d\n", sockfd);
-    pthread_exit(0);
-}
-
-int run(const int argc, const char **argv) {
-    int masterSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (masterSocket < 0)
-        perror("fail to create socket!\n"), exit(errno);
-
-    struct sockaddr_in sock_addr;
-    bzero(&sock_addr, sizeof(sock_addr));
-    sock_addr.sin_family = AF_INET;
-    get_command_line(argc, (char **) (argv), sock_addr, serv_dir);
-    int opt = 1;
-    if (setsockopt(masterSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-        perror("setsockopt");
-        exit(errno);
-    }
-    if (bind(masterSocket, (struct sockaddr *) &sock_addr, sizeof(sock_addr)) < 0) {
-        perror("fail to bind socket");
-        exit(errno);
-    }
-
-    set_nonblock(masterSocket);
-    listen(masterSocket, SOMAXCONN);
-
-    struct epoll_event events[MAX_EVENT_NUMBER];
-    int epfd = epoll_create1(0);
-    if (epfd == -1)
-        perror("fail to create epoll\n"), exit(errno);
-
-    AddFd(epfd, masterSocket, false);
-
-    for (;;) {
-        int ret = epoll_wait(epfd, events, MAX_EVENT_NUMBER, -1);  //Permanent Wait
-        if (ret < 0) {
-            printf("epoll wait failure!\n");
+		    case 'p': 
+                //std::cout << "found argument p = " << optarg << std::endl;
+                cmd_set.port = optarg;
             break;
-        }
-        int i;
-        for (i = 0; i < ret; i++) {
-            int sockfd = events[i].data.fd;
-            if (sockfd == masterSocket) {
-                struct sockaddr_in slave_address;
-                socklen_t slave_addrlength = sizeof(slave_address);
-                int slaveSocket = accept(masterSocket, (struct sockaddr *) &slave_address, &slave_addrlength);
-                AddFd(epfd, slaveSocket, true);
-            } else if (events[i].events & EPOLLIN) {
-                pthread_t thread;
-                struct fds fds_for_new_worker;
-                fds_for_new_worker.epollfd = epfd;
-                fds_for_new_worker.sockfd = events[i].data.fd;
+		    case 'd':
+                //std::cout << "found argument d = " << optarg << std::endl;
+                cmd_set.working_dir = optarg;  
+            break;
+		    }
+	    }
+    }
 
-                /*Start a new worker thread to serve sockfd*/
-                pthread_create(&thread, NULL, worker, &fds_for_new_worker);
+void workers_creator(workers_struct &workers, waiting_workers_fifo_struct &waiting_workers, int epoll_fd, std::string working_dir){
+    pthread_t worker_tid;
+    ptread_mutex_init(&workers.workers_mutex, NULL);
 
-            } else {
-                printf("something unexpected happened!\n");
+    worker_struct worker;
+    worker.run = false;
+    worker.err = false;
+    worker.epoll_fd = epoll_fd;
+    worker.fd = 0;
+
+    //заполняем воркеров ожидающих работу
+    if(pthread_mutex_init(&waiting_workers.mutex, NULL) != 0){
+            std::cout << "Mutex Creation ERROR!" << std::endl;
+		    //return 0;
             }
+    if(pthread_cond_init(&waiting_workers.work_done, NULL) !=0){
+            std::cout << "Condition Variable Creation ERROR!" << std::endl;
+            //return 0;
+            }    
+    std::pair<worker_id_t, worker_fd_t> pair = {0, 0};
+    for (int i =0; i <= MAX_WORKERS; i++){
+        //дозаполняем структуру воркера
+        if(pthread_mutex_init(&worker.start_mutex, NULL) != 0){
+            std::cout << "Condition Variable Creation ERROR!" << std::endl;
+		    //return 0;
+            }
+        if(pthread_cond_init(&worker.start, NULL) !=0){
+            std::cout << "Condition Variable Creation ERROR!" << std::endl;
+            //return 0;
+            }
+        workers.workers_map[i] = worker; //добовляем очередного воркера   
+        pair.first = i;
+        waiting_workers.fifo_buf.push(pair); //заполняем очередь свободных воркеров
+        }
+         
+
+    }
+
+
+int main(int argc, char **argv){
+    workers_map workers_map;
+    fd_fifo_struct fd_fifo;
+    waiting_workers_fifo_struct waiting_workers_fifo;
+    worker_struct worker;
+    workers_struct workers;
+    
+    
+    
+	cmd_set cmd_set; // структура с параметрами коммандной строки
+	char *cmd;
+    get_cmdstr_param (argc, argv, "h:p:d:", cmd_set);
+    //std::string output_str = "Start Server! IP = " + cmd_set.ip + "; Port = " + cmd_set.port + "; Working Dir = " + cmd_set.working_dir;
+    worker_str.working_dir = cmd_set.working_dir;
+
+    if((cmd = strchr(argv[0], '/')) == NULL) cmd = argv[0];
+    else cmd++; 
+	//std::cout << "cmd: " << cmd << std::endl;
+    daemonize(cmd);
+    //daemonize2();
+    //с этих пор процесс находится в состоянии демона, вывод сообщений возможет только через syslog 
+    //std::cout << output_str << std::endl;
+    //syslog(LOG_INFO, &output_str[0]);
+    
+    //создаем поток-синхронизатор
+
+
+
+    //создадим мастерсокет
+    int master_socket = socket( //- системный вызов socket
+		AF_INET,		//параметр domain = протокол IPv4
+		SOCK_STREAM,	//параметр type = протокол TCP
+		IPPROTO_TCP		//параметр protocol = протокол TCP, возможно указать 0, что будет означать протокол по умолчанию
+		); 
+	if (master_socket == -1){ //проверяет открытие мастерсокета 
+		syslog(LOG_ERR, "Unable to Create Master Socket %s", strerror(errno));
+        exit(1);	
+		}
+
+    //Привязываем сокет к IP адресу и порту.
+    //создадим структуру сокадр
+	struct sockaddr_in master_socket_addr;
+	master_socket_addr.sin_family = AF_INET; 
+	inet_pton(AF_INET, &cmd_set.ip[0], &master_socket_addr.sin_addr);
+	master_socket_addr.sin_port = htons(atoi(&cmd_set.port[0])); 
+
+    // забиндим сокет
+	if(bind(master_socket, (struct sockaddr *)(& master_socket_addr), sizeof(master_socket_addr)) == -1){
+        syslog(LOG_ERR, "Unable to Bind Master Socket %s", strerror(errno));
+        }
+    
+    //делаем мастерсокет неблокирующим
+	set_nonblock(master_socket);
+
+    // слушаем мастерсокет (подготавливаем сервер к входящим запросам клиентов)
+    if(listen(master_socket, SOMAXCONN) == -1){
+        syslog(LOG_ERR, "Unable to Start Listen the Master Socket %s", strerror(errno));
+        exit(1);
         }
 
+    // создаем дескриптор epoll для родительского процесса
+	int master_epoll_fd =  epoll_create1(0);
+	if (master_epoll_fd == -1){
+		syslog(LOG_ERR, "Unable to Create Epoll FD %s", strerror(errno));
+		exit(1);
+		}
+
+	// зарегистрируем наш дескриптор epoll_fd в epoll для этого создадим стректуру epoll_event
+	struct epoll_event epoll_event_str;
+	epoll_event_str.data.fd = master_socket;
+	epoll_event_str.events = EPOLLIN; //укажем какие события будем отслеживать, в нашем случае доступность на чтение
+
+	// регистрируем
+	if (epoll_ctl(master_epoll_fd, EPOLL_CTL_ADD, master_socket, &epoll_event_str) == -1){
+        syslog(LOG_ERR, "Unable to Registrate Epoll Master Socket Event %s", strerror(errno));
+        exit(1);
+		}
+    
+    while (1){
+        // Создать список для хранения возвращенных событий, возвращенных ждать 
+        struct epoll_event events_from_epoll[MAX_EPOLL_EVENTS] = {0};
+        //std::cout << "Wait Event from Mastersocket!" << std::endl;
+        // опросим список входящих событий
+        int N = epoll_wait	(
+							master_epoll_fd, //дескриптор
+							events_from_epoll, //список событий
+							MAX_EPOLL_EVENTS, // максимальное количество возвращаямых событий
+							-1 //таймаут (-1 ждать вечно)
+							);
+        for(unsigned int i = 0; i < N; i++){
+			if(events_from_epoll[i].data.fd == master_socket){ //событие от мастерсокета
+				//std::cout << "Event from Mastersocket!" << std::endl;
+                int slave_socket = accept(master_socket, 0, 0); //выполняем accept
+				if (slave_socket == -1) {
+					//std::cout << "Can not accept Slave Socket!!!" << std::endl;
+                    syslog(LOG_ERR, "Unable to Accept Slave Socket %s", strerror(errno));
+					}
+				//std::cout << "Accept Slave Socket!!! FD = " << slave_socket << ";" << std::endl;
+                epoll_event_str.data.fd = slave_socket;
+                epoll_event_str.events = EPOLLONESHOT; //epoll будет сигнализировать о событии 1 раз!
+                // регистрируем сокет дочернего процесса
+	            if (epoll_ctl(master_epoll_fd, EPOLL_CTL_ADD, slave_socket, &epoll_event_str) == -1){
+                    syslog(LOG_ERR, "Unable to Registrate Epoll Master Socket Event %s", strerror(errno));
+                    exit(1);
+		            }
+				} 
+            else{ // данные пришли от какого-то воркера, открываем поток для их обработки
+                while(maxworkers <= MAXWORKER){ // по возможности создаем поток
+                    pthread_t worker_tid;
+                        //заполняем структуру воркера;
+                        worker_struct.worker_fd = events_from_epoll[i].data.fd;
+
+                        workers_map[worker_tid] = 
+                    if (pthread_create(&worker_tid, NULL, worker_tread, &worker_str) != 0){
+		                syslog(LOG_ERR, "Master: FD Transceiver Thread Creation ERROR! %s", strerror(errno));
+                        / /std::cout << "Worker PID: " << getpid() << " FD Transceiver Thread Creation ERROR!" << std::endl;
+		                }
+                    }
+                    else{
+                                                 
+                        }    
+                //std::cout << "Master PID: " << getpid() << "; Ivent From Worker!" << std::endl;
+                    syslog(LOG_ERR, "Master: read_fd return NO Master Socket! %s", strerror(errno));
+                }    				
+			} // end for!
+    } //  end while!
+    
+
+	return 0;
     }
-    close(masterSocket);
-    close(epfd);
-    return 0;
-}
-
-static void skeleton_daemon() {
-    pid_t pid;
-
-    /* Fork off the parent process */
-    pid = fork();
-
-    /* An error occurred */
-    if (pid < 0)
-        exit(EXIT_FAILURE);
-
-    /* Success: Let the parent terminate */
-    if (pid > 0)
-        exit(EXIT_SUCCESS);
-
-    /* On success: The child process becomes session leader */
-    if (setsid() < 0)
-        exit(EXIT_FAILURE);
-
-    /* Catch, ignore and handle signals */
-    //TODO: Implement a working signal handler */
-    signal(SIGCHLD, SIG_IGN);
-    signal(SIGHUP, SIG_IGN);
-
-    /* Fork off for the second time*/
-    pid = fork();
-
-    /* An error occurred */
-    if (pid < 0)
-        exit(EXIT_FAILURE);
-
-    /* Success: Let the parent terminate */
-    if (pid > 0)
-        exit(EXIT_SUCCESS);
-
-    /* Set new file permissions */
-    umask(0);
-
-    /* Change the working directory to the root directory */
-    /* or another appropriated directory */
-    chdir("/");
-
-    /* Close all open file descriptors */
-    int x;
-    for (x = sysconf(_SC_OPEN_MAX); x >= 0; x--) {
-        close(x);
-    }
-
-    /* Open the log file */
-    // openlog ("firstdaemon", LOG_PID, LOG_DAEMON);
-}
-
-int main(const int argc, const char **argv) {
-    skeleton_daemon();
-    while (1) {
-        run(argc, argv);
-    }
-    return EXIT_SUCCESS;
-}
